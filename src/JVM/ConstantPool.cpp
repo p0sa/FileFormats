@@ -55,6 +55,11 @@ void ConstantPool::Reserve(U16 n)
   m_pool.reserve(n);
 }
 
+void ConstantPool::Add(std::unique_ptr<CPInfo> info) 
+{
+  this->Add(info.release());
+}
+
 void ConstantPool::Add(CPInfo* info) 
 {
   m_pool.emplace_back( std::shared_ptr<CPInfo>{info} ); 

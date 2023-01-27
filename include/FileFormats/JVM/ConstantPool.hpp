@@ -142,6 +142,7 @@ class ConstantPool
 
     void Reserve(U16 n);
 
+    void Add(std::unique_ptr<CPInfo> info);
     void Add(CPInfo* info);
 
     template <class T = CPInfo>
