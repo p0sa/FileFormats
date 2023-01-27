@@ -137,8 +137,10 @@ struct InvokeDynamicInfo : public CPInfo
 class ConstantPool
 {
   public:
-    ConstantPool(U16 count=0);
+    ConstantPool(U16 n=0);
     ~ConstantPool() = default;
+
+    void Reserve(U16 n);
 
     void Add(CPInfo* info);
 

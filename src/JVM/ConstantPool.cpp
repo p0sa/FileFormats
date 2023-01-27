@@ -44,10 +44,15 @@ CPInfo::Type CPInfo::GetType() const
   return this->m_type;
 }
 
-ConstantPool::ConstantPool(U16 count) 
+ConstantPool::ConstantPool(U16 n) 
 : m_pool{nullptr} //constants use 1 based indexing, so we ignore the 0th index
 {
-  m_pool.reserve(count);
+  this->Reserve(n);
+}
+
+void ConstantPool::Reserve(U16 n) 
+{
+  m_pool.reserve(n);
 }
 
 void ConstantPool::Add(CPInfo* info) 
