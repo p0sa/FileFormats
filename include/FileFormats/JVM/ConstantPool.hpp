@@ -4,6 +4,8 @@
 
 #include <vector>
 #include <memory>
+#include <string>
+#include <string_view>
 
 namespace FileFormats::JVM
 {
@@ -110,8 +112,7 @@ struct NameAndTypeInfo : public CPInfo
 struct UTF8Info : public CPInfo
 {
   UTF8Info() : CPInfo(Type::UTF8) {}
-  U16 Length;
-  U8* Bytes;
+  std::string String;
 };
 
 struct MethodHandleInfo : public CPInfo
@@ -141,6 +142,11 @@ class ConstantPool
     ~ConstantPool() = default;
 
     void Reserve(U16 n);
+
+    //Returns either the name of the constant, if the given const type has a 
+    //name (such as in the case of UTF8 or any class that has a name field 
+    //pointing to a UTF8), OR returns the stringified version of the const type
+    std::string_view GetConstNameOrTypeStr(U16 index);
 
     void Add(std::unique_ptr<CPInfo> info);
     void Add(CPInfo* info);
