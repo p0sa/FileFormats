@@ -1,8 +1,6 @@
 #pragma once
 
 #include "FileFormats/Defs.hpp"
-#include "FileFormats/Error.hpp"
-
 
 using namespace FileFormats;
 
@@ -12,10 +10,14 @@ enum ByteOrder
   BigEndian
 };
 
-//TODO: this is only defined in gcc. Add more compiler support or make
-//      detection compiler independant.
-#define HOST_BYTE_ORDER ( (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) ? \
-                                ByteOrder::LittleEndian : ByteOrder::BigEndian)
+constexpr ByteOrder GetHostByteOrder()
+{
+    const U16 data{0xAABB};
+    const void* addr = static_cast<const void*>(&data);
+    const unsigned char* leastSigByte = static_cast<const unsigned char*>(addr);
+
+    return *leastSigByte == 0xAA ? ByteOrder::BigEndian : ByteOrder::LittleEndian;
+}
 
 template <typename T>
 void SwapByteOrder(T& t)
@@ -38,8 +40,8 @@ void Read(std::istream& stream, T& t)
 {
   stream.read(reinterpret_cast<char*>(&t), sizeof(T));
 
-  if(Order != HOST_BYTE_ORDER)
-    SwapByteOrder(t);
+  if (Order != GetHostByteOrder())
+      SwapByteOrder(t);
 }
 
 template <ByteOrder Order=LittleEndian, typename... Args>
