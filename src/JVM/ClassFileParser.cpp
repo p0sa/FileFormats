@@ -1,47 +1,56 @@
 #include "FileFormats/JVM/ClassFileParser.hpp"
 
 #include "Util/IO.hpp"
+#include "Util/Error.hpp"
 
 #include <iostream>
 
 using namespace FileFormats;
 using namespace JVM;
 
-ClassFile ClassFileParser::ParseClassFile(std::istream& stream)
+ErrorOr<ClassFile> ClassFileParser::ParseClassFile(std::istream& stream)
 {
   ClassFile cf;
 
-  Read<BigEndian>(stream, 
-                  cf.Magic,
-                  cf.MinorVersion, 
-                  cf.MajorVersion);
+  TRY(Read<BigEndian>(stream,
+                      cf.Magic,
+                      cf.MinorVersion,
+                      cf.MajorVersion));
 
-  cf.ConstPool = ClassFileParser::ParseConstantPool(stream);
+  auto errOrCP = ClassFileParser::ParseConstantPool(stream);
 
-  Read<BigEndian>(stream,
-                  cf.AccessFlags,
-                  cf.ThisClass,
-                  cf.SuperClass);
+  if ( errOrCP.IsError() )
+    return errOrCP.GetError();
 
+  cf.ConstPool = errOrCP.Get();
 
+  TRY(Read<BigEndian>(stream,
+                      cf.AccessFlags,
+                      cf.ThisClass,
+                      cf.SuperClass));
 
 
   return cf;
 }
 
-ConstantPool ClassFileParser::ParseConstantPool(std::istream& stream)
+ErrorOr<ConstantPool> ClassFileParser::ParseConstantPool(std::istream& stream)
 {
   ConstantPool cp;
 
   U16 count;
-  Read<BigEndian>(stream, count);
+  TRY(Read<BigEndian>(stream, count));
 
   cp.Reserve(count);
 
   //count = number of constants + 1
   for(U16 i = 0; i < count-1; i++)
   {
-    auto cpInfo = ClassFileParser::ParseConstant(stream);
+    auto errOrCPInfo = ClassFileParser::ParseConstant(stream);
+
+    if (errOrCPInfo.IsError())
+      return errOrCPInfo.GetError();
+
+    auto cpInfo = errOrCPInfo.Release();
 
     CPInfo::Type type = cpInfo->GetType();
 
@@ -63,6 +72,7 @@ ConstantPool ClassFileParser::ParseConstantPool(std::istream& stream)
 std::istream& operator >>(std::istream& stream, ClassInfo& info)
 {
   Read<BigEndian>(stream, info.NameIndex);
+
   return stream;
 }
 
@@ -150,15 +160,19 @@ std::istream& operator >>(std::istream& stream, InvokeDynamicInfo& info)
 }
 
 template <typename CPInfoT>
-static std::unique_ptr<CPInfo> parseConstT(std::istream& stream)
+static ErrorOr< std::unique_ptr<CPInfo> > parseConstT(std::istream& stream)
 {
   CPInfoT* pInfo = new CPInfoT{};
   stream >> *pInfo;
 
+  //TODO: rewrite stream operators to regular funcitons so we can return the actual Error caused during parsing of T
+  if (stream.bad())
+    return Error{"Failed to parse T"};
+
   return std::unique_ptr<CPInfo>(pInfo);
 }
 
-std::unique_ptr<CPInfo> ClassFileParser::ParseConstant(std::istream& stream)
+ErrorOr< std::unique_ptr<CPInfo> > ClassFileParser::ParseConstant(std::istream& stream)
 {
   CPInfo::Type type = static_cast<CPInfo::Type>(stream.get());
 
@@ -180,12 +194,5 @@ std::unique_ptr<CPInfo> ClassFileParser::ParseConstant(std::istream& stream)
     case CPInfo::Type::InvokeDynamic: return parseConstT<InvokeDynamicInfo>(stream);
   }
 
-  
-  //TODO: proper error handling
-  std::cerr << "Couldn't parse unknown const type: \"" << CPInfo::GetTypeName(type)
-            << "\" - tellg() = " << stream.tellg() << '\n';
-  std::exit(-1);
-
-  //TODO:: Error type wrapper
-  return nullptr;
+  return Error::FromFormatStr("ParseConstant encountered unknown tag: 0x%X (streampos: %u)", static_cast<U8>(type), static_cast<size_t>(stream.tellg()));
 }
