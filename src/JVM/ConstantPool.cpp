@@ -1,13 +1,14 @@
 #include "FileFormats/JVM/ConstantPool.hpp"
 
 #include <map>
+#include <cassert>
 
 using namespace FileFormats;
 using namespace FileFormats::JVM;
 
-const char* CPInfo::GetTypeName(Type type)
+ErrorOr<std::string_view> CPInfo::GetTypeName(Type type)
 {
-  std::map<Type, const char*> typeNames = 
+  static std::map<Type, std::string> typeNames = 
   {
     {Type::Class,              "Class"},
     {Type::Fieldref,           "Fieldref"},
@@ -27,16 +28,21 @@ const char* CPInfo::GetTypeName(Type type)
 
   auto itr = typeNames.find(type);
 
-  if(itr != typeNames.end())
-    return std::get<1>(*itr);
+  if (itr != typeNames.end())
+    return std::string_view{ std::get<1>(*itr) };
 
   //TODO: better error handling
-  return "UNKNOWN_TAG";
+  return Error::FromFormatStr("CPInfo::GetTypeName called with unknown type: 0x%X", type);
 }
 
-const char* CPInfo::GetName() const
+std::string_view CPInfo::GetName() const
 {
-  return CPInfo::GetTypeName(this->GetType());
+  auto nameOrErr = CPInfo::GetTypeName(this->GetType());
+
+  //should never be the case for CPInfo derived types as they should be tied to a type 
+  assert(nameOrErr.IsError() == false);
+
+  return nameOrErr.Get();
 }
 
 CPInfo::Type CPInfo::GetType() const

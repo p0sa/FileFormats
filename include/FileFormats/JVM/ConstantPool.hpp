@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Defs.hpp"
+#include "../Error.hpp"
 
 #include <vector>
 #include <memory>
@@ -29,9 +30,9 @@ struct CPInfo
     MethodType         = 16,
     InvokeDynamic      = 18,
   };
-  static const char* GetTypeName(Type type);
+  static ErrorOr<std::string_view> GetTypeName(Type type);
 
-  const char* GetName() const;
+  std::string_view GetName() const;
   Type GetType() const;
 
   virtual ~CPInfo() = default;
