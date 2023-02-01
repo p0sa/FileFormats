@@ -2,7 +2,10 @@
 
 #include "Defs.hpp"
 
+#include <string>
 #include <variant>
+
+#include <iostream>
 
 namespace FileFormats
 {
@@ -10,29 +13,30 @@ namespace FileFormats
 class Error
 {
   public:
-    explicit Error(int code) : m_code{ code } {}
-    explicit Error(const char* message) : m_message{ message } {}
-
-    virtual ~Error()
-    {
-      if (m_message == nullptr)
-        delete[] m_message;
-    }
-
     template <typename... Args>
     static Error FromFormatStr(const char* format, Args... args)
     {
       int bufsize = std::snprintf(nullptr, 0, format, args...);
 
-      char* buf = new char[bufsize];
-      std::snprintf(buf, bufsize, format, args...);
+      std::unique_ptr<char[]> buf{ new char[bufsize+1] };
+      std::snprintf(buf.get(), bufsize+1, format, args...);
 
-      return Error{buf};
+      return Error{ std::string{buf.get(), buf.get()+bufsize}};
+    }
+
+    static Error FromLiteralStr(const char* msg)
+    {
+      return Error{msg};
+    }
+
+    static Error FromErrCode(int code)
+    {
+      return Error{code};
     }
   
     bool IsCode()
     {
-      return m_message != nullptr;
+      return m_message.empty();
     }
   
     int GetCode()
@@ -40,14 +44,18 @@ class Error
       return m_code;
     }
   
-    const char* GetMessage()
+    std::string GetMessage()
     {
       return m_message;
     }
+
+  protected:
+    Error(int code) : m_code{ code } {}
+    Error(std::string message) : m_message{message} {}
   
   private:
     int m_code;
-    const char* m_message{ nullptr };
+    std::string m_message;
 };
 
 template <typename T>

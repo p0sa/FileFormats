@@ -39,13 +39,10 @@ void SwapByteOrder(T& t)
 template <ByteOrder Order = LittleEndian, typename T>
 ErrorOr<void> Read(std::istream& stream, T& t)
 {
-  if (!stream.good())
-    return Error{"stream not good before read"};
-
   stream.read(reinterpret_cast<char*>(&t), sizeof(T));
 
   if (stream.bad())
-    return Error{"stream badbit set after read"};
+    return Error::FromFormatStr("Read() failed: streams badbit got set after read. (steampos = 0x%X) (T = %s) (sizeof T = %u)", stream.tellg(), typeid(T).name(), sizeof(T));
 
   if (Order != GetHostByteOrder())
     SwapByteOrder(t);

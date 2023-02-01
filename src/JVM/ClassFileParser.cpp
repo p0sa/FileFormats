@@ -69,105 +69,106 @@ ErrorOr<ConstantPool> ClassFileParser::ParseConstantPool(std::istream& stream)
   return cp;
 }
 
-std::istream& operator >>(std::istream& stream, ClassInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, ClassInfo& info)
 {
-  Read<BigEndian>(stream, info.NameIndex);
-
-  return stream;
+  TRY(Read<BigEndian>(stream, info.NameIndex));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, FieldrefInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, FieldrefInfo& info)
 {
-  Read<BigEndian>(stream, info.ClassIndex, info.NameAndTypeIndex);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.ClassIndex, info.NameAndTypeIndex));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, MethodrefInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, MethodrefInfo& info)
 {
-  Read<BigEndian>(stream, info.ClassIndex, info.NameAndTypeIndex);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.ClassIndex, info.NameAndTypeIndex));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, InterfaceMethodrefInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, InterfaceMethodrefInfo& info)
 {
-  Read<BigEndian>(stream, info.ClassIndex, info.NameAndTypeIndex);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.ClassIndex, info.NameAndTypeIndex));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, StringInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, StringInfo& info)
 {
-  Read<BigEndian>(stream, info.StringIndex);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.StringIndex));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, IntegerInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, IntegerInfo& info)
 {
-  Read<BigEndian>(stream, info.Bytes);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.Bytes));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, FloatInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, FloatInfo& info)
 {
-  Read<BigEndian>(stream, info.Bytes);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.Bytes));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, LongInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, LongInfo& info)
 {
-  Read<BigEndian>(stream, info.HighBytes, info.LowBytes);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.HighBytes, info.LowBytes));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, DoubleInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, DoubleInfo& info)
 {
-  Read<BigEndian>(stream, info.HighBytes, info.LowBytes);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.HighBytes, info.LowBytes));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, NameAndTypeInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, NameAndTypeInfo& info)
 {
-  Read<BigEndian>(stream, info.NameIndex, info.DescriptorIndex);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.NameIndex, info.DescriptorIndex));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, UTF8Info& info)
+static ErrorOr<void> readConst(std::istream& stream, UTF8Info& info)
 {
   U16 len;
-  Read<BigEndian>(stream, len);
+  TRY(Read<BigEndian>(stream, len));
 
   info.String = std::string(len, '\0');
   stream.read(&info.String[0], len);
 
-  return stream;
+  if (stream.bad())
+    return Error::FromFormatStr("failed to read UTF8 const string. Stream badbit set after read. (streampos = 0x%X)", stream.tellg());
+
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, MethodHandleInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, MethodHandleInfo& info)
 {
-  Read<BigEndian>(stream, info.ReferenceKind, info.ReferenceIndex);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.ReferenceKind, info.ReferenceIndex));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, MethodTypeInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, MethodTypeInfo& info)
 {
-  Read<BigEndian>(stream, info.DescriptorIndex);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.DescriptorIndex));
+  return {};
 }
 
-std::istream& operator >>(std::istream& stream, InvokeDynamicInfo& info)
+static ErrorOr<void> readConst(std::istream& stream, InvokeDynamicInfo& info)
 {
-  Read<BigEndian>(stream, info.BootstrapMethodAttrIndex, info.NameAndTypeIndex);
-  return stream;
+  TRY(Read<BigEndian>(stream, info.BootstrapMethodAttrIndex, info.NameAndTypeIndex));
+  return {};
 }
 
 template <typename CPInfoT>
 static ErrorOr< std::unique_ptr<CPInfo> > parseConstT(std::istream& stream)
 {
   CPInfoT* pInfo = new CPInfoT{};
-  stream >> *pInfo;
+  auto err = readConst(stream, *pInfo);
 
-  //TODO: rewrite stream operators to regular funcitons so we can return the actual Error caused during parsing of T
-  if (stream.bad())
-    return Error{"Failed to parse T"};
+  if (err.IsError())
+    return err.GetError();
 
   return std::unique_ptr<CPInfo>(pInfo);
 }
@@ -194,5 +195,5 @@ ErrorOr< std::unique_ptr<CPInfo> > ClassFileParser::ParseConstant(std::istream& 
     case CPInfo::Type::InvokeDynamic: return parseConstT<InvokeDynamicInfo>(stream);
   }
 
-  return Error::FromFormatStr("ParseConstant encountered unknown tag: 0x%X (streampos: %u)", static_cast<U8>(type), static_cast<size_t>(stream.tellg()));
+  return Error::FromFormatStr("ParseConstant encountered unknown tag: 0x%X (streampos = 0x%X)", static_cast<U8>(type), static_cast<size_t>(stream.tellg()));
 }

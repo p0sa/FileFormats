@@ -8,7 +8,7 @@ using namespace FileFormats::JVM;
 
 ErrorOr<std::string_view> CPInfo::GetTypeName(Type type)
 {
-  static std::map<Type, std::string> typeNames = 
+  static std::map<Type, std::string_view> typeNames = 
   {
     {Type::Class,              "Class"},
     {Type::Fieldref,           "Fieldref"},
@@ -29,9 +29,8 @@ ErrorOr<std::string_view> CPInfo::GetTypeName(Type type)
   auto itr = typeNames.find(type);
 
   if (itr != typeNames.end())
-    return std::string_view{ std::get<1>(*itr) };
+    return std::get<1>(*itr);
 
-  //TODO: better error handling
   return Error::FromFormatStr("CPInfo::GetTypeName called with unknown type: 0x%X", type);
 }
 
@@ -103,5 +102,5 @@ void ConstantPool::Add(CPInfo* info)
 
 U16 ConstantPool::Count()
 {
-  return m_pool.size();
+  return static_cast<U16>(m_pool.size());
 }
