@@ -28,6 +28,8 @@ struct AttributeInfo
   U16 NameIndex;
   virtual U32 GetLength() const = 0;
 
+  virtual ~AttributeInfo() = default;
+
   protected:
     AttributeInfo(Type type) : m_type{type}{}
 
