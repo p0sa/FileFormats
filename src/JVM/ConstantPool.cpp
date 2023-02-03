@@ -6,7 +6,7 @@
 using namespace FileFormats;
 using namespace FileFormats::JVM;
 
-ErrorOr<std::string_view> CPInfo::GetTypeName(Type type)
+std::string_view CPInfo::GetTypeName(Type type)
 {
   static std::map<Type, std::string_view> typeNames = 
   {
@@ -28,20 +28,13 @@ ErrorOr<std::string_view> CPInfo::GetTypeName(Type type)
 
   auto itr = typeNames.find(type);
 
-  if (itr != typeNames.end())
-    return std::get<1>(*itr);
-
-  return Error::FromFormatStr("CPInfo::GetTypeName called with unknown type: 0x%X", type);
+  assert(itr != typeNames.end());
+  return std::get<1>(*itr);
 }
 
 std::string_view CPInfo::GetName() const
 {
-  auto nameOrErr = CPInfo::GetTypeName(this->GetType());
-
-  //should never be the case for CPInfo derived types as they should be tied to a type 
-  assert(nameOrErr.IsError() == false);
-
-  return nameOrErr.Get();
+  return CPInfo::GetTypeName(this->GetType());
 }
 
 CPInfo::Type CPInfo::GetType() const
@@ -60,7 +53,7 @@ void ConstantPool::Reserve(U16 n)
   m_pool.reserve(n);
 }
 
-std::string_view ConstantPool::GetConstNameOrTypeStr(U16 index)
+std::string_view ConstantPool::GetConstNameOrTypeStr(U16 index) const
 {
   auto ptr = m_pool[index];
 
@@ -100,7 +93,7 @@ void ConstantPool::Add(CPInfo* info)
   m_pool.emplace_back( std::shared_ptr<CPInfo>{info} ); 
 }
 
-U16 ConstantPool::Count()
+U16 ConstantPool::Count() const
 {
   return static_cast<U16>(m_pool.size());
 }

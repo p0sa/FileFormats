@@ -30,7 +30,7 @@ struct CPInfo
     MethodType         = 16,
     InvokeDynamic      = 18,
   };
-  static ErrorOr<std::string_view> GetTypeName(Type type);
+  static std::string_view GetTypeName(Type type);
 
   std::string_view GetName() const;
   Type GetType() const;
@@ -147,19 +147,30 @@ class ConstantPool
     //Returns either the name of the constant, if the given const type has a 
     //name (such as in the case of UTF8 or any class that has a name field 
     //pointing to a UTF8), OR returns the stringified version of the const type
-    std::string_view GetConstNameOrTypeStr(U16 index);
+    std::string_view GetConstNameOrTypeStr(U16 index) const;
 
     void Add(std::unique_ptr<CPInfo> info);
     void Add(CPInfo* info);
 
     template <class T = CPInfo>
-    std::shared_ptr<CPInfo> Get(U16 index)
+    ErrorOr<std::shared_ptr<T>> Get(U16 index) const
     {
-      return std::dynamic_pointer_cast<T>( m_pool[index] );
+      if(index >= m_pool.size() || index == 0)
+        return Error::FromFormatStr("ConstantPool.Get(%u) failed because given index is outside the pools range (1-%u)", index, this->Count());
+
+      if (m_pool[index].get() == nullptr)
+        return Error::FromFormatStr("ConstantPool.Get(%u) failed because constant at given index is nullptr");
+
+      std::shared_ptr<T> ptr = std::dynamic_pointer_cast<T>( m_pool[index] );
+
+      if (ptr.get() == nullptr)
+        return Error::FromFormatStr("ConstantPool.Get<%s>(%u) failed to convert CPInfo to requested type (dynamic cast failed)", typeid(T).name(), index);
+
+      return ptr;
     }
 
     //Count = number of constants + 1
-    U16 Count();
+    U16 Count() const;
   private:
     std::vector< std::shared_ptr<CPInfo> > m_pool;
 };
