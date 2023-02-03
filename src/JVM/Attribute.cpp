@@ -13,14 +13,12 @@ static std::map<AttributeInfo::Type, std::string_view> typeNames =
   {AttributeInfo::Type::Raw, "_Raw"}
 };
 
-ErrorOr<std::string_view> AttributeInfo::GetTypeName(AttributeInfo::Type type)
+std::string_view AttributeInfo::GetTypeName(AttributeInfo::Type type)
 {
   auto itr = typeNames.find(type);
 
-  if (itr != typeNames.end())
-    return std::get<1>(*itr);
-
-  return Error::FromFormatStr("AttributeInfo::GetTypeName called with unknown type: 0x%X", type);
+  assert(itr != typeNames.end());
+  return std::get<1>(*itr);
 }
 
 ErrorOr<AttributeInfo::Type> AttributeInfo::GetType(std::string_view str)
@@ -36,12 +34,7 @@ ErrorOr<AttributeInfo::Type> AttributeInfo::GetType(std::string_view str)
 
 std::string_view AttributeInfo::GetName()
 {
-  auto errOrName = AttributeInfo::GetTypeName(this->GetType());
-
-  //should never error for derived types of AttributeInfo as they should be tied to a known type always
-  assert(errOrName.IsError() == false);
-
-  return errOrName.Get();
+  return AttributeInfo::GetTypeName(this->GetType());
 }
 
 AttributeInfo::Type AttributeInfo::GetType()

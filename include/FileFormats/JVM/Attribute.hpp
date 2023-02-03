@@ -20,7 +20,7 @@ struct AttributeInfo
   };
 
   static ErrorOr<Type> GetType(std::string_view);
-  static ErrorOr<std::string_view> GetTypeName(Type);
+  static std::string_view GetTypeName(Type);
 
   std::string_view GetName();
   Type GetType();
