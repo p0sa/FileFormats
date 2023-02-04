@@ -2,6 +2,7 @@
 
 #include "../Defs.hpp"
 #include "ConstantPool.hpp"
+#include "Attribute.hpp"
 
 namespace FileFormats::JVM
 {
@@ -11,8 +12,7 @@ struct FieldMethodInfo
   U16 AccessFlags;
   U16 NameIndex;
   U16 DescriptorIndex;
-  //TODO: implement attribute
-  //std::vector<Attribute::Info*> Attributes;
+  std::vector< std::shared_ptr<AttributeInfo> > Attributes;
 };
 
 struct ClassFile 
@@ -27,8 +27,7 @@ struct ClassFile
   std::vector<U16> Interfaces;
   std::vector<FieldMethodInfo> Fields;
   std::vector<FieldMethodInfo> Methods;
-  //TODO: implement attribute
-  //std::vector< Attribute::Info* > Attributes;
+  std::vector< std::shared_ptr<AttributeInfo> > Attributes;
 };
 
 

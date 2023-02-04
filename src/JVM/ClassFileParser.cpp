@@ -18,17 +18,61 @@ ErrorOr<ClassFile> ClassFileParser::ParseClassFile(std::istream& stream)
                       cf.MajorVersion));
 
   auto errOrCP = ClassFileParser::ParseConstantPool(stream);
-
-  if ( errOrCP.IsError() )
-    return errOrCP.GetError();
+  VERIFY(errOrCP);
 
   cf.ConstPool = errOrCP.Get();
 
+  U16 interfacesCount;
   TRY(Read<BigEndian>(stream,
                       cf.AccessFlags,
                       cf.ThisClass,
-                      cf.SuperClass));
+                      cf.SuperClass,
+                      interfacesCount));
 
+  cf.Interfaces.reserve(interfacesCount);
+  for (auto i = 0; i < interfacesCount; i++)
+  {
+    U16 interfaceIndex;
+    TRY( Read<BigEndian>(stream, interfaceIndex));
+    cf.Interfaces.emplace_back(interfaceIndex);
+  }
+
+  U16 fieldsCount;
+  TRY(Read<BigEndian>(stream, fieldsCount));
+
+  cf.Fields.reserve(fieldsCount);
+  for (auto i = 0; i < fieldsCount; i++)
+  {
+    auto errOrField = ClassFileParser::ParseFieldMethodInfo(stream, cf.ConstPool);
+    VERIFY(errOrField);
+
+    cf.Fields.emplace_back(errOrField.Get());
+  }
+
+
+  U16 methodsCount;
+  TRY(Read<BigEndian>(stream, methodsCount));
+
+  cf.Methods.reserve(methodsCount);
+  for (auto i = 0; i < methodsCount; i++)
+  {
+    auto errOrMethod = ClassFileParser::ParseFieldMethodInfo(stream, cf.ConstPool);
+    VERIFY(errOrMethod);
+
+    cf.Methods.emplace_back(errOrMethod.Get());
+  }
+
+  U16 attributesCount;
+  TRY(Read<BigEndian>(stream, attributesCount));
+
+  cf.Attributes.reserve(attributesCount);
+  for (auto i = 0; i < attributesCount; i++)
+  {
+    auto errOrAttr = ClassFileParser::ParseAttribute(stream, cf.ConstPool);
+    VERIFY(errOrAttr);
+
+    cf.Attributes.emplace_back(errOrAttr.Release());
+  }
 
   return cf;
 }
@@ -46,9 +90,7 @@ ErrorOr<ConstantPool> ClassFileParser::ParseConstantPool(std::istream& stream)
   for(U16 i = 0; i < count-1; i++)
   {
     auto errOrCPInfo = ClassFileParser::ParseConstant(stream);
-
-    if (errOrCPInfo.IsError())
-      return errOrCPInfo.GetError();
+    VERIFY(errOrCPInfo);
 
     auto cpInfo = errOrCPInfo.Release();
 
@@ -165,10 +207,8 @@ template <typename CPInfoT>
 static ErrorOr< std::unique_ptr<CPInfo> > parseConstT(std::istream& stream)
 {
   CPInfoT* pInfo = new CPInfoT{};
-  auto err = readConst(stream, *pInfo);
-
-  if (err.IsError())
-    return err.GetError();
+  auto errOrConst = readConst(stream, *pInfo);
+  VERIFY(errOrConst);
 
   return std::unique_ptr<CPInfo>(pInfo);
 }
@@ -195,5 +235,88 @@ ErrorOr< std::unique_ptr<CPInfo> > ClassFileParser::ParseConstant(std::istream& 
     case CPInfo::Type::InvokeDynamic: return parseConstT<InvokeDynamicInfo>(stream);
   }
 
-  return Error::FromFormatStr("ParseConstant encountered unknown tag: 0x%X (streampos = 0x%X)", static_cast<U8>(type), static_cast<size_t>(stream.tellg()));
+  return Error::FromFormatStr("ParseConstant encountered unknown tag: 0x%X (streampos = 0x%X)", static_cast<U8>(type), stream.tellg());
+}
+
+ErrorOr<FieldMethodInfo> ClassFileParser::ParseFieldMethodInfo(std::istream& stream, const ConstantPool& constPool)
+{
+  FieldMethodInfo info;
+
+  U16 attributesCount;
+  TRY(Read<BigEndian>(stream, info.AccessFlags,
+                              info.NameIndex,
+                              info.DescriptorIndex,
+                              attributesCount));
+
+  info.Attributes.reserve(attributesCount);
+  for (auto i = 0; i < attributesCount; i++)
+  {
+    auto errOrAttr = ClassFileParser::ParseAttribute(stream, constPool);
+    VERIFY(errOrAttr);
+
+    info.Attributes.emplace_back(errOrAttr.Release());
+  }
+
+
+  return info;
+}
+
+static ErrorOr<void> readAttribute(std::istream& stream, const ConstantPool& constPool, ConstantValueAttribute& attr)
+{
+  std::cerr << "parsed constant value attr\n";
+  TRY(Read<BigEndian>(stream, attr.Index));
+
+  return {};
+}
+
+template <typename AttributeT>
+static ErrorOr< std::unique_ptr<AttributeInfo> > parseAttributeT(std::istream& stream, const ConstantPool& constPool, U16 nameIndex)
+{
+  AttributeT* attr = new AttributeT();
+  attr->NameIndex = nameIndex;
+
+  auto err = readAttribute(stream, constPool, *attr);
+  VERIFY(err);
+
+  return std::unique_ptr<AttributeInfo>(attr);
+}
+
+ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(std::istream& stream, const ConstantPool& constPool)
+{
+  U16 nameIndex;
+  U32 length;
+  TRY(Read<BigEndian>(stream, nameIndex, length));
+
+  auto nameStr = constPool.GetConstNameOrTypeStr(nameIndex);
+
+  auto errOrType = AttributeInfo::GetType(nameStr);
+
+  AttributeInfo::Type type;
+  if (errOrType.IsError())
+  {
+    std::cerr << errOrType.GetError().GetMessage() << '\n';
+
+    type = AttributeInfo::Type::Raw;
+  }
+  else
+    type = errOrType.Get();
+
+  switch (type)
+  {
+    case AttributeInfo::Type::ConstantValue: return parseAttributeT<ConstantValueAttribute>(stream, constPool, nameIndex);
+  }
+
+  RawAttribute* attr = new RawAttribute{};
+
+  //TODO: add ReadArray<> to util
+  attr->Bytes.reserve(length);
+  for (unsigned i = 0; i < length; i++)
+  {
+    U8 byte;
+    TRY(Read(stream, byte));
+
+    attr->Bytes.emplace_back(byte);
+  }
+
+  return std::unique_ptr<AttributeInfo>(attr);
 }

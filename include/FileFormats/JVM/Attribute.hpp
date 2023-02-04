@@ -12,24 +12,25 @@ namespace FileFormats::JVM
 
 struct AttributeInfo
 {
-  enum class Type
-  {
-    ConstantValue,
-
-    Raw, //Non standard 
-  };
-
-  static ErrorOr<Type> GetType(std::string_view);
-  static std::string_view GetTypeName(Type);
-
-  std::string_view GetName();
-  Type GetType();
-
-  U16 NameIndex;
-  virtual U32 GetLength() const = 0;
-
-  virtual ~AttributeInfo() = default;
-
+  public:
+    enum class Type
+    {
+      ConstantValue,
+  
+      Raw, //Non standard 
+    };
+  
+    static ErrorOr<Type> GetType(std::string_view);
+    static std::string_view GetTypeName(Type);
+  
+    std::string_view GetName();
+    Type GetType();
+  
+    U16 NameIndex;
+    virtual U32 GetLength() const = 0;
+  
+    virtual ~AttributeInfo() = default;
+  
   protected:
     AttributeInfo(Type type) : m_type{type}{}
 
@@ -55,6 +56,5 @@ struct RawAttribute : public AttributeInfo
 
   std::vector<U8> Bytes;
 };
-
 
 } //namespace FileFormats::JVM
