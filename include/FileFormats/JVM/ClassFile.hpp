@@ -12,7 +12,7 @@ struct FieldMethodInfo
   U16 AccessFlags;
   U16 NameIndex;
   U16 DescriptorIndex;
-  std::vector< std::shared_ptr<AttributeInfo> > Attributes;
+  std::vector< std::unique_ptr<AttributeInfo> > Attributes;
 };
 
 struct ClassFile 
@@ -27,7 +27,7 @@ struct ClassFile
   std::vector<U16> Interfaces;
   std::vector<FieldMethodInfo> Fields;
   std::vector<FieldMethodInfo> Methods;
-  std::vector< std::shared_ptr<AttributeInfo> > Attributes;
+  std::vector< std::unique_ptr<AttributeInfo> > Attributes;
 };
 
 
