@@ -4,6 +4,7 @@
 
 #include <string>
 #include <variant>
+#include <memory>
 
 #include <iostream>
 
@@ -58,36 +59,36 @@ class Error
     std::string m_message;
 };
 
-template <typename T>
+template <typename ValueT>
 class ErrorOr
 {
   public:
-    ErrorOr(Error err) : m_errorOrT { err } {}
-    ErrorOr(T const& t) : m_errorOrT { t } {}
-    ErrorOr(T&& t) : m_errorOrT { std::move(t) } {}
-  
+    template <typename T>
+    ErrorOr(T&& value) : m_errorOrValue { std::forward<T>(value) } {}
+
+
     bool IsError()
     {
-      return std::holds_alternative<Error>(m_errorOrT);
+      return std::holds_alternative<Error>(m_errorOrValue);
     }
   
     Error GetError()
     {
-      return std::get<Error>(m_errorOrT);
+      return std::get<Error>(m_errorOrValue);
     }
   
-    T Get()
+    ValueT& Get()
     {
-      return std::get<T>(m_errorOrT);
+      return std::get<ValueT>(m_errorOrValue);
     }
   
-    T&& Release()
+    ValueT Release()
     {
-      return std::move(std::get<T>(m_errorOrT));
+      return std::move(std::get<ValueT>(m_errorOrValue));
     }
   
   private:
-  std::variant<Error, T> m_errorOrT;
+    std::variant<Error, ValueT> m_errorOrValue;
 
 };
 
@@ -95,8 +96,8 @@ template <>
 class ErrorOr<void> : public ErrorOr<std::monostate>
 {
   public:
-    ErrorOr(Error error) : ErrorOr<std::monostate>{error} {}
-    ErrorOr() : ErrorOr<std::monostate>{ {}  } {}
+  using ErrorOr<std::monostate>::ErrorOr;
+  ErrorOr() : ErrorOr<std::monostate>{ std::monostate{} } {}
 };
 
 } //namespace FileFormats
