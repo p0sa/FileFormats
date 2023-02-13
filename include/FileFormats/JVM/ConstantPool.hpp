@@ -140,8 +140,6 @@ class ConstantPool
 {
   public:
     ConstantPool(U16 n=0);
-    ~ConstantPool() = default;
-
     void Reserve(U16 n);
 
     //Returns either the name of the constant, if the given const type has a 
@@ -149,30 +147,40 @@ class ConstantPool
     //pointing to a UTF8), OR returns the stringified version of the const type
     std::string_view GetConstNameOrTypeStr(U16 index) const;
 
-    void Add(std::unique_ptr<CPInfo> info);
+    void Add(std::unique_ptr<CPInfo>&& info);
     void Add(CPInfo* info);
 
     template <class T = CPInfo>
-    ErrorOr<std::shared_ptr<T>> Get(U16 index) const
+    ErrorOr< std::reference_wrapper<T> > Get(U16 index) const
     {
       if(index >= m_pool.size() || index == 0)
         return Error::FromFormatStr("ConstantPool.Get(%u) failed because given index is outside the pools range (1-%u)", index, this->Count());
 
       if (m_pool[index].get() == nullptr)
-        return Error::FromFormatStr("ConstantPool.Get(%u) failed because constant at given index is nullptr");
+        return Error::FromFormatStr("ConstantPool.Get(%u) failed because constant at given index is nullptr", index);
 
-      std::shared_ptr<T> ptr = std::dynamic_pointer_cast<T>( m_pool[index] );
+      T* ptr = dynamic_cast<T*>( m_pool[index].get() );
 
-      if (ptr.get() == nullptr)
+      if (ptr == nullptr)
         return Error::FromFormatStr("ConstantPool.Get<%s>(%u) failed to convert CPInfo to requested type (dynamic cast failed)", typeid(T).name(), index);
 
-      return ptr;
+      return *ptr;
+    }
+
+    CPInfo* operator[](U16 index)
+    {
+      return m_pool[index].get();
+    }
+
+    const CPInfo* operator[](U16 index) const
+    {
+      return m_pool[index].get();
     }
 
     //Count = number of constants + 1
     U16 Count() const;
   private:
-    std::vector< std::shared_ptr<CPInfo> > m_pool;
+    std::vector< std::unique_ptr<CPInfo> > m_pool;
 };
 
 }  //namespace FileFormats::JVM

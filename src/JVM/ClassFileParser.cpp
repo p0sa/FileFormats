@@ -20,7 +20,7 @@ ErrorOr<ClassFile> ClassFileParser::ParseClassFile(std::istream& stream)
   auto errOrCP = ClassFileParser::ParseConstantPool(stream);
   VERIFY(errOrCP);
 
-  cf.ConstPool = errOrCP.Get();
+  cf.ConstPool = errOrCP.Release();
 
   U16 interfacesCount;
   TRY(Read<BigEndian>(stream,
@@ -46,7 +46,7 @@ ErrorOr<ClassFile> ClassFileParser::ParseClassFile(std::istream& stream)
     auto errOrField = ClassFileParser::ParseFieldMethodInfo(stream, cf.ConstPool);
     VERIFY(errOrField);
 
-    cf.Fields.emplace_back(errOrField.Get());
+    cf.Fields.emplace_back(errOrField.Release());
   }
 
 
@@ -59,7 +59,7 @@ ErrorOr<ClassFile> ClassFileParser::ParseClassFile(std::istream& stream)
     auto errOrMethod = ClassFileParser::ParseFieldMethodInfo(stream, cf.ConstPool);
     VERIFY(errOrMethod);
 
-    cf.Methods.emplace_back(errOrMethod.Get());
+    cf.Methods.emplace_back(errOrMethod.Release());
   }
 
   U16 attributesCount;
@@ -256,7 +256,6 @@ ErrorOr<FieldMethodInfo> ClassFileParser::ParseFieldMethodInfo(std::istream& str
 
     info.Attributes.emplace_back(errOrAttr.Release());
   }
-
 
   return info;
 }
