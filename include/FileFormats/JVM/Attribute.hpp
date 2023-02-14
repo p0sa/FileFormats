@@ -16,6 +16,8 @@ struct AttributeInfo
     enum class Type
     {
       ConstantValue,
+
+      SourceFile,
   
       Raw, //Non standard 
     };
@@ -45,6 +47,14 @@ struct ConstantValueAttribute : public AttributeInfo
   U32 GetLength() const override { return 2;  }
 
   U16 Index;
+};
+
+struct SourceFileAttribute : public AttributeInfo
+{
+  SourceFileAttribute() : AttributeInfo(Type::SourceFile) {}
+  U32 GetLength() const override { return 2;  }
+
+  U16 SourceFileIndex;
 };
 
 

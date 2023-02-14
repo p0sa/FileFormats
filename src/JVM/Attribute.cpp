@@ -9,6 +9,7 @@ using namespace JVM;
 static std::map<AttributeInfo::Type, std::string_view> typeNames =
 {
   {AttributeInfo::Type::ConstantValue, "ConstantValue"},
+  {AttributeInfo::Type::SourceFile,    "SourceFile"},
 
   {AttributeInfo::Type::Raw, "_Raw"}
 };

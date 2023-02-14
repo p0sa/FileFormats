@@ -238,7 +238,8 @@ ErrorOr< std::unique_ptr<CPInfo> > ClassFileParser::ParseConstant(std::istream& 
   return Error::FromFormatStr("ParseConstant encountered unknown tag: 0x%X (streampos = 0x%X)", static_cast<U8>(type), stream.tellg());
 }
 
-ErrorOr<FieldMethodInfo> ClassFileParser::ParseFieldMethodInfo(std::istream& stream, const ConstantPool& constPool)
+ErrorOr<FieldMethodInfo> ClassFileParser::ParseFieldMethodInfo(
+    std::istream& stream, const ConstantPool& constPool)
 {
   FieldMethodInfo info;
 
@@ -260,16 +261,23 @@ ErrorOr<FieldMethodInfo> ClassFileParser::ParseFieldMethodInfo(std::istream& str
   return info;
 }
 
-static ErrorOr<void> readAttribute(std::istream& stream, const ConstantPool& constPool, ConstantValueAttribute& attr)
+static ErrorOr<void> readAttribute(std::istream& stream, 
+    const ConstantPool& constPool, SourceFileAttribute& attr)
 {
-  std::cerr << "parsed constant value attr\n";
-  TRY(Read<BigEndian>(stream, attr.Index));
+  TRY(Read<BigEndian>(stream, attr.SourceFileIndex));
+  return {};
+}
 
+static ErrorOr<void> readAttribute(std::istream& stream, 
+    const ConstantPool& constPool, ConstantValueAttribute& attr)
+{
+  TRY(Read<BigEndian>(stream, attr.Index));
   return {};
 }
 
 template <typename AttributeT>
-static ErrorOr< std::unique_ptr<AttributeInfo> > parseAttributeT(std::istream& stream, const ConstantPool& constPool, U16 nameIndex)
+static ErrorOr< std::unique_ptr<AttributeInfo> > parseAttributeT(
+    std::istream& stream, const ConstantPool& constPool, U16 nameIndex)
 {
   AttributeT* attr = new AttributeT();
   attr->NameIndex = nameIndex;
@@ -280,7 +288,8 @@ static ErrorOr< std::unique_ptr<AttributeInfo> > parseAttributeT(std::istream& s
   return std::unique_ptr<AttributeInfo>(attr);
 }
 
-ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(std::istream& stream, const ConstantPool& constPool)
+ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(
+    std::istream& stream, const ConstantPool& constPool)
 {
   U16 nameIndex;
   U32 length;
@@ -302,7 +311,10 @@ ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(std::i
 
   switch (type)
   {
-    case AttributeInfo::Type::ConstantValue: return parseAttributeT<ConstantValueAttribute>(stream, constPool, nameIndex);
+    case AttributeInfo::Type::ConstantValue: 
+      return parseAttributeT<ConstantValueAttribute>(stream, constPool, nameIndex);
+    case AttributeInfo::Type::SourceFile: 
+      return parseAttributeT<SourceFileAttribute>(stream, constPool, nameIndex);
   }
 
   RawAttribute* attr = new RawAttribute{};
