@@ -9,12 +9,13 @@ using namespace JVM;
 static std::map<AttributeInfo::Type, std::string_view> typeNames =
 {
   {AttributeInfo::Type::ConstantValue, "ConstantValue"},
+  {AttributeInfo::Type::Code,          "Code"},
   {AttributeInfo::Type::SourceFile,    "SourceFile"},
 
   {AttributeInfo::Type::Raw, "_Raw"}
 };
 
-std::string_view AttributeInfo::GetTypeName(AttributeInfo::Type type)
+std::string_view AttributeInfo::GetTypeName(AttributeInfo::Type type) 
 {
   auto itr = typeNames.find(type);
 
@@ -22,7 +23,7 @@ std::string_view AttributeInfo::GetTypeName(AttributeInfo::Type type)
   return std::get<1>(*itr);
 }
 
-ErrorOr<AttributeInfo::Type> AttributeInfo::GetType(std::string_view str)
+ErrorOr<AttributeInfo::Type> AttributeInfo::GetType(std::string_view str) 
 {
   for (auto itr : typeNames)
   {
@@ -33,12 +34,12 @@ ErrorOr<AttributeInfo::Type> AttributeInfo::GetType(std::string_view str)
   return Error::FromFormatStr("AttributeInfo::GetType called with unknown type name \"%s\"", str.data());
 }
 
-std::string_view AttributeInfo::GetName()
+std::string_view AttributeInfo::GetName() const
 {
   return AttributeInfo::GetTypeName(this->GetType());
 }
 
-AttributeInfo::Type AttributeInfo::GetType()
+AttributeInfo::Type AttributeInfo::GetType() const
 {
   return m_type;
 }
