@@ -261,12 +261,6 @@ ErrorOr<FieldMethodInfo> ClassFileParser::ParseFieldMethodInfo(
   return info;
 }
 
-static ErrorOr<void> readAttribute(std::istream& stream, 
-    const ConstantPool& constPool, SourceFileAttribute& attr)
-{
-  TRY(Read<BigEndian>(stream, attr.SourceFileIndex));
-  return {};
-}
 
 static ErrorOr<void> readAttribute(std::istream& stream, 
     const ConstantPool& constPool, ConstantValueAttribute& attr)
@@ -275,15 +269,83 @@ static ErrorOr<void> readAttribute(std::istream& stream,
   return {};
 }
 
+static ErrorOr<void> readAttribute(std::istream& stream, 
+    const ConstantPool& constPool, SourceFileAttribute& attr)
+{
+  TRY(Read<BigEndian>(stream, attr.SourceFileIndex));
+  return {};
+}
+
+static ErrorOr<void> readAttribute(std::istream& stream, 
+    const ConstantPool& constPool, CodeAttribute& attr)
+{
+  U32 codeLen;
+  TRY(Read<BigEndian>(stream, 
+                      attr.MaxStack,
+                      attr.MaxLocals,
+                      codeLen));
+
+  if(codeLen == 0)
+    return Error::FromLiteralStr("code_len field in \"Code\" attribute is 0 (illegal)");
+
+  attr.Code.reserve(codeLen);
+  for(auto i = 0; i < codeLen; i++)
+  {
+    U8 byte;
+    TRY(Read<BigEndian>(stream, byte));
+    attr.Code.emplace_back(byte);
+  }
+
+  //TODO: create a read util function for these sorts of 
+  //      "read length, then read array of that length" scenarios
+  U16 exceptionTableLen;
+  TRY(Read<BigEndian>(stream, exceptionTableLen));
+
+  attr.ExceptionTable.reserve(exceptionTableLen);
+  for(auto i = 0; i < exceptionTableLen; i++)
+  {
+    CodeAttribute::ExceptionHandler handler;
+    TRY(Read<BigEndian>(stream, handler.StartPC, 
+                                handler.EndPC, 
+                                handler.HandlerPC, 
+                                handler.CatchType));
+
+    attr.ExceptionTable.emplace_back(handler);
+  }
+
+  U16 attributesCount;
+  TRY(Read<BigEndian>(stream, attributesCount));
+
+  attr.Attributes.reserve(attributesCount);
+  for(auto i = 0; i < attributesCount; i++)
+  {
+    auto errOrAttr = ClassFileParser::ParseAttribute(stream, constPool);
+    VERIFY(errOrAttr);
+
+    attr.Attributes.emplace_back( errOrAttr.Release() );
+  }
+
+  return {};
+}
+
 template <typename AttributeT>
 static ErrorOr< std::unique_ptr<AttributeInfo> > parseAttributeT(
-    std::istream& stream, const ConstantPool& constPool, U16 nameIndex)
+    std::istream& stream, const ConstantPool& constPool, U16 nameIndex, U32 len)
 {
   AttributeT* attr = new AttributeT();
   attr->NameIndex = nameIndex;
 
   auto err = readAttribute(stream, constPool, *attr);
   VERIFY(err);
+
+  U32 attrLen = attr->GetLength();
+  if(attrLen != len)
+  {
+    return Error::FromFormatStr("Parsed attribute type \"%.*s\"" 
+        " doesnt have the correct length (expected: %u, actual: %u)", 
+        static_cast<int>(attr->GetName().size()), attr->GetName().data(), 
+        len, attrLen);
+  }
 
   return std::unique_ptr<AttributeInfo>(attr);
 }
@@ -292,8 +354,8 @@ ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(
     std::istream& stream, const ConstantPool& constPool)
 {
   U16 nameIndex;
-  U32 length;
-  TRY(Read<BigEndian>(stream, nameIndex, length));
+  U32 len;
+  TRY(Read<BigEndian>(stream, nameIndex, len));
 
   auto nameStr = constPool.GetConstNameOrTypeStr(nameIndex);
 
@@ -303,7 +365,6 @@ ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(
   if (errOrType.IsError())
   {
     std::cerr << errOrType.GetError().GetMessage() << '\n';
-
     type = AttributeInfo::Type::Raw;
   }
   else
@@ -312,16 +373,18 @@ ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(
   switch (type)
   {
     case AttributeInfo::Type::ConstantValue: 
-      return parseAttributeT<ConstantValueAttribute>(stream, constPool, nameIndex);
+      return parseAttributeT<ConstantValueAttribute>(stream, constPool, nameIndex, len);
     case AttributeInfo::Type::SourceFile: 
-      return parseAttributeT<SourceFileAttribute>(stream, constPool, nameIndex);
+      return parseAttributeT<SourceFileAttribute>(stream, constPool, nameIndex, len);
+    case AttributeInfo::Type::Code: 
+      return parseAttributeT<CodeAttribute>(stream, constPool, nameIndex, len);
   }
 
   RawAttribute* attr = new RawAttribute{};
 
   //TODO: add ReadArray<> to util
-  attr->Bytes.reserve(length);
-  for (unsigned i = 0; i < length; i++)
+  attr->Bytes.reserve(len);
+  for (unsigned i = 0; i < len; i++)
   {
     U8 byte;
     TRY(Read(stream, byte));
