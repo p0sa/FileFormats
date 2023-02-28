@@ -8,22 +8,24 @@ using namespace FileFormats::JVM;
 
 std::string_view CPInfo::GetTypeName(Type type)
 {
+  using namespace std::literals;
+
   static std::map<Type, std::string_view> typeNames = 
   {
-    {Type::Class,              "Class"},
-    {Type::Fieldref,           "Fieldref"},
-    {Type::Methodref,          "Methodref"},
-    {Type::InterfaceMethodref, "InterfaceMethodref"},
-    {Type::String,             "String"},
-    {Type::Integer,            "Integer"},
-    {Type::Float,              "Float"},
-    {Type::Long,               "Long"},
-    {Type::Double,             "Double"},
-    {Type::NameAndType,        "NameAndType"},
-    {Type::UTF8,               "UTF8"},
-    {Type::MethodHandle,       "MethodHandle"},
-    {Type::MethodType,         "MethodType"},
-    {Type::InvokeDynamic,      "InvokeDynamic"},
+    {Type::Class,              "Class"sv},
+    {Type::Fieldref,           "Fieldref"sv},
+    {Type::Methodref,          "Methodref"sv},
+    {Type::InterfaceMethodref, "InterfaceMethodref"sv},
+    {Type::String,             "String"sv},
+    {Type::Integer,            "Integer"sv},
+    {Type::Float,              "Float"sv},
+    {Type::Long,               "Long"sv},
+    {Type::Double,             "Double"sv},
+    {Type::NameAndType,        "NameAndType"sv},
+    {Type::UTF8,               "UTF8"sv},
+    {Type::MethodHandle,       "MethodHandle"sv},
+    {Type::MethodType,         "MethodType"sv},
+    {Type::InvokeDynamic,      "InvokeDynamic"sv},
   };
 
   auto itr = typeNames.find(type);
