@@ -50,8 +50,34 @@ ErrorOr<void> Read(std::istream& stream, T& t)
   return {};
 }
 
+template <ByteOrder Order = LittleEndian, typename T>
+ErrorOr<void> Write(std::ostream& stream, const T& t)
+{
+  if (Order != GetHostByteOrder())
+  {
+    T temp(t);
+    SwapByteOrder(temp);
+    stream.write(reinterpret_cast<char*>(&temp), sizeof(T));
+  }
+  else
+  {
+    stream.write(reinterpret_cast<const char*>(&t), sizeof(T));
+  }
+
+  if (stream.bad())
+    return Error::FromFormatStr("Write() failed: streams badbit got set after write. (steampos = 0x%X) (T = %s) (sizeof T = %u)", stream.tellp(), typeid(T).name(), sizeof(T));
+
+  return {};
+}
+
 template <ByteOrder Order = LittleEndian, typename... Args>
 ErrorOr<void> Read(std::istream& stream, Args&... args)
 {
   return (Read<Order>(stream, args), ...);
+}
+
+template <ByteOrder Order = LittleEndian, typename... Args>
+ErrorOr<void> Write(std::ostream& stream, const Args&... args)
+{
+  return (Write<Order>(stream, args), ...);
 }
