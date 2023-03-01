@@ -381,6 +381,7 @@ ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(
   }
 
   RawAttribute* attr = new RawAttribute{};
+  attr->NameIndex = nameIndex;
 
   //TODO: add ReadArray<> to util
   attr->Bytes.reserve(len);
