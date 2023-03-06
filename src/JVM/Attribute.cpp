@@ -33,7 +33,8 @@ ErrorOr<AttributeInfo::Type> AttributeInfo::GetType(std::string_view str)
       return std::get<0>(itr);
   }
 
-  return Error::FromFormatStr("AttributeInfo::GetType called with unknown type name \"%s\"", str.data());
+  return Error::FromFormatStr("AttributeInfo::GetType called with unknown type name \"%.*s\"", 
+      str.size(), str.data());
 }
 
 std::string_view AttributeInfo::GetName() const
