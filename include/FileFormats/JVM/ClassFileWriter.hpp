@@ -15,6 +15,8 @@ class ClassFileWriter
 
     static ErrorOr<void> WriteFieldMethod(std::ostream&, const FieldMethodInfo&);
     static ErrorOr<void> WriteAttribute(std::ostream&, const AttributeInfo&);
+
+    static ErrorOr<void> WriteInstruction(std::ostream&, const Instruction&);
 };
 
 } //namespace FileFormats::JVM

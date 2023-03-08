@@ -4,6 +4,7 @@
 #include "Util/Error.hpp"
 
 #include <iostream>
+#include <cassert>
 
 using namespace FileFormats;
 using namespace JVM;
@@ -285,15 +286,26 @@ static ErrorOr<void> readAttribute(std::istream& stream,
                       attr.MaxLocals,
                       codeLen));
 
-  if(codeLen == 0)
-    return Error::FromLiteralStr("code_len field in \"Code\" attribute is 0 (illegal)");
 
-  attr.Code.reserve(codeLen);
-  for(auto i = 0; i < codeLen; i++)
+  U32 parsedCodeLen{0};
+  while(parsedCodeLen < codeLen)
   {
-    U8 byte;
-    TRY(Read<BigEndian>(stream, byte));
-    attr.Code.emplace_back(byte);
+    auto streampos_before = stream.tellg();
+
+    auto errOrInstr = ClassFileParser::ParseInstruction(stream);
+    VERIFY(errOrInstr);
+
+    attr.Code.emplace_back( std::move(errOrInstr.Release()) );
+
+    auto parsed = stream.tellg() - streampos_before;
+    assert(parsed > 0);
+
+    parsedCodeLen += parsed;
+  }
+
+  if(parsedCodeLen != codeLen)
+  {
+    return Error::FromFormatStr("Failed parsing code attribute. \"CodeLen\" field parsed as %u but actual parsed codelen is at least %u bytes", static_cast<size_t>(codeLen), static_cast<size_t>(parsedCodeLen));
   }
 
   //TODO: create a read util function for these sorts of 
@@ -394,4 +406,102 @@ ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(
   }
 
   return std::unique_ptr<AttributeInfo>(attr);
+}
+
+
+static ErrorOr<Instruction> readInstrWithOperands(std::istream& stream, size_t nOperands, U8 opCode)
+{
+  Instruction instr{opCode, {}};
+
+  for(auto i = 0; i < nOperands; i++)
+  {
+    U8 operandByte;
+    TRY(Read<BigEndian>(stream, operandByte));
+
+    instr.OperandBytes.emplace_back(operandByte);
+  }
+
+  return std::move(instr);
+}
+
+ErrorOr<Instruction> ClassFileParser::ParseInstruction(std::istream& stream)
+{
+  U8 opCode;
+  TRY(Read<BigEndian>(stream, opCode));
+
+  //undefined opcodes
+  if(opCode > 0xCA && opCode < 0xFE)
+    return Error::FromFormatStr("failed parsing unknown opcode: %#04x", opCode);
+
+
+  switch(opCode)
+  {
+    case LDC:
+    case ILOAD:
+    case LLOAD:
+    case FLOAD:
+    case DLOAD:
+    case ALOAD:
+    case ISTORE:
+    case LSTORE:
+    case FSTORE:
+    case DSTORE:
+    case ASTORE:
+    case RET:
+    case BIPUSH:
+    case NEWARRAY:
+        return std::move( readInstrWithOperands(stream, 1, opCode) );
+
+    case LDC_W:
+    case LDC2_W:
+    case GETSTATIC:
+    case PUTSTATIC:
+    case GETFIELD:
+    case PUTFIELD:
+    case INVOKEVIRTUAL:
+    case INVOKESPECIAL:
+    case INVOKESTATIC:
+    case NEW:
+    case ANEWARRAY:
+    case CHECKCAST:
+    case INSTANCEOF:
+    case IINC:
+    case SIPUSH:
+    case IFEQ:
+    case IFNE:
+    case IFLT:
+    case IFGE:
+    case IFGT:
+    case IFLE:
+    case IF_ICMPEQ:
+    case IF_ICMPNE:
+    case IF_ICMPLT:
+    case IF_ICMPGE:
+    case IF_ICMPGT:
+    case IF_ICMPLE:
+    case IF_ACMPEQ:
+    case IF_ACMPNE:
+    case GOTO:
+    case JSR:
+    case IFNULL:
+    case IFNONNULL:
+        return std::move( readInstrWithOperands(stream, 2, opCode) );
+
+    case MULTIANEWARRAY:
+        return std::move( readInstrWithOperands(stream, 3, opCode) );
+
+    case INVOKEINTERFACE:
+    case INVOKEDYNAMIC:
+    case GOTO_W:
+    case JSR_W:
+        return std::move( readInstrWithOperands(stream, 4, opCode) );
+
+    case WIDE: 
+    case LOOKUPSWITCH: 
+    case TABLESWITCH: 
+        return Error::FromLiteralStr("ENCOUNTERED UNIMPLEMENTED OPCODE OPERAND FORMAT");
+
+  };
+
+  return Instruction{opCode, {}};
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "./Instruction.hpp"
+
 #include "../Defs.hpp"
 #include "../Error.hpp"
 
@@ -72,7 +74,7 @@ struct CodeAttribute : public AttributeInfo
 
   U16 MaxStack;
   U16 MaxLocals;
-  std::vector<U8> Code;
+  std::vector<Instruction> Code;
 
   struct ExceptionHandler
   {
@@ -90,8 +92,12 @@ struct CodeAttribute : public AttributeInfo
     U32 len{0};
     len += sizeof(MaxStack);
     len += sizeof(MaxLocals);
+
     len += sizeof(U32); //serialized field: "code_length" 
-    len += Code.size() * sizeof(U8);
+
+    for(const Instruction& instr : Code)
+      len += instr.GetLength();
+
     len += sizeof(U16); //serialized field: "exception_table_length" 
     len += ExceptionTable.size() * sizeof(U16) * 4;
     len += sizeof(U16); //serialized field: "attributes_count" 

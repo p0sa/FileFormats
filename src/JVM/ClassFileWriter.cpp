@@ -219,11 +219,17 @@ static ErrorOr<void> writeAttr(std::ostream& stream, const SourceFileAttribute& 
 static ErrorOr<void> writeAttr(std::ostream& stream, const CodeAttribute& attr)
 {
   TRY( Write<BigEndian>(stream, attr.MaxStack,
-                                attr.MaxLocals,
-                                static_cast<U32>(attr.Code.size())) );
+                                attr.MaxLocals) );
 
-  //TODO: add array writing IO util funcs
-  stream.write(reinterpret_cast<const char*>(attr.Code.data()), attr.Code.size());
+  U32 codeLen{0};
+
+  for(const auto& instr : attr.Code)
+    codeLen += instr.GetLength();
+
+  TRY( Write<BigEndian>(stream, codeLen) );
+
+  for(const auto& instr : attr.Code)
+    ClassFileWriter::WriteInstruction(stream, instr);
 
   if(stream.bad())
     return Error::FromFormatStr("failed to write code attr, stream badbit set: %s in %s", __func__, __FILE__);
@@ -274,4 +280,14 @@ ErrorOr<void> ClassFileWriter::WriteAttribute(std::ostream& stream, const Attrib
   //TODO: stop using old c printf for formattting, as it isn't compatible with
   //things like non-null terminated std::string_view
   return Error::FromFormatStr("WriteAttribute: write func not implemented for attribute with name \"%.*s\"", info.GetName().length(), info.GetName().data());
+}
+
+ErrorOr<void> ClassFileWriter::WriteInstruction(std::ostream& stream, const Instruction& instr)
+{
+  TRY( Write<BigEndian>(stream, instr.OpCode) );
+
+  for(const U8& operand : instr.OperandBytes)
+    TRY( Write<BigEndian>(stream, operand) );
+
+  return {};
 }
