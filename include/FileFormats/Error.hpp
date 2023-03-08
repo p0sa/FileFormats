@@ -72,7 +72,7 @@ class ErrorOr
       return std::holds_alternative<Error>(m_errorOrValue);
     }
   
-    Error GetError()
+    Error& GetError()
     {
       return std::get<Error>(m_errorOrValue);
     }
