@@ -413,7 +413,7 @@ static ErrorOr<Instruction> readInstrWithOperands(std::istream& stream, size_t n
 {
   Instruction instr{opCode, {}};
 
-  for(auto i = 0; i < nOperands; i++)
+  for(size_t i = 0; i < nOperands; i++)
   {
     U8 operandByte;
     TRY(Read<BigEndian>(stream, operandByte));
