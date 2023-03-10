@@ -5,6 +5,13 @@
 
 using namespace FileFormats;
 
+#if defined(__BYTE_ORDER__) 
+  #define HOST_BYTEORDER_IS_LE (__BYTE_ORDER__ != __ORDER_BIG_ENDIAN__)
+#else
+  static_assert(false, "Unable to determine host endianness");
+#endif
+  
+
 enum ByteOrder
 {
   LittleEndian,
@@ -13,11 +20,7 @@ enum ByteOrder
 
 constexpr ByteOrder GetHostByteOrder()
 {
-  const U16 data{ 0xAABB };
-  const void* addr = static_cast<const void*>(&data);
-  const unsigned char* leastSigByte = static_cast<const unsigned char*>(addr);
-
-  return *leastSigByte == 0xAA ? ByteOrder::BigEndian : ByteOrder::LittleEndian;
+  return HOST_BYTEORDER_IS_LE ? ByteOrder::LittleEndian : ByteOrder::BigEndian;
 }
 
 template <typename T>
