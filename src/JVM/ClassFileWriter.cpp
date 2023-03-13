@@ -284,10 +284,13 @@ ErrorOr<void> ClassFileWriter::WriteAttribute(std::ostream& stream, const Attrib
 
 ErrorOr<void> ClassFileWriter::WriteInstruction(std::ostream& stream, const Instruction& instr)
 {
+  return Error::FromLiteralStr("WIRITNG INSTRUCTION NOT IMPL");
+  /*
   TRY( Write<BigEndian>(stream, instr.OpCode) );
 
   for(const U8& operand : instr.OperandBytes)
     TRY( Write<BigEndian>(stream, operand) );
+    */
 
   return {};
 }

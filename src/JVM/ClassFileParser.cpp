@@ -409,9 +409,10 @@ ErrorOr< std::unique_ptr<AttributeInfo> > ClassFileParser::ParseAttribute(
 }
 
 
+/*
 static ErrorOr<Instruction> readInstrWithOperands(std::istream& stream, size_t nOperands, U8 opCode)
 {
-  Instruction instr{opCode, {}};
+  Instruction instr{opCode};
 
   for(size_t i = 0; i < nOperands; i++)
   {
@@ -423,9 +424,12 @@ static ErrorOr<Instruction> readInstrWithOperands(std::istream& stream, size_t n
 
   return std::move(instr);
 }
+*/
 
 ErrorOr<Instruction> ClassFileParser::ParseInstruction(std::istream& stream)
 {
+  return Error::FromLiteralStr("PARSE ISNTRUCTION NOT IMPL");
+  /*
   U8 opCode;
   TRY(Read<BigEndian>(stream, opCode));
 
@@ -503,5 +507,6 @@ ErrorOr<Instruction> ClassFileParser::ParseInstruction(std::istream& stream)
 
   };
 
-  return Instruction{opCode, {}};
+  return Instruction{opCode};
+  */
 }
